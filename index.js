@@ -494,8 +494,8 @@ function Windows(instance, callback) {
                     function(error, stdout, stderr) {
                       if (error) return end(error, stdout, stderr);
                       WindowsWaitForStatus(instance,
-                        function(error) {
-                          if (error) return end(error);
+                        function(error, stdout, stderr) {
+                          if (error) return end(error, stdout, stderr);
                           WindowsResult(instance, end);
                         }
                       );
@@ -599,10 +599,10 @@ function WindowsResult(instance, end) {
       if (error) return end(error);
       Node.fs.readFile(instance.pathStdout, 'utf-8',
         function(error, stdout) {
-          if (error) return end(error);
+          if (error) return end(error, stdout);
           Node.fs.readFile(instance.pathStderr, 'utf-8',
             function(error, stderr) {
-              if (error) return end(error);
+              if (error) return end(error, stdout, stderr);
               code = parseInt(code.trim(), 10);
               if (code === 0) {
                 end(undefined, stdout, stderr);
@@ -641,7 +641,9 @@ function WindowsWaitForStatus(instance, end) {
             // We check that command output has been redirected to stdout file:
             Node.fs.stat(instance.pathStdout,
               function(error) {
-                if (error) return end(new Error(PERMISSION_DENIED));
+                const err = new Error(PERMISSION_DENIED);
+                err.previous = error;
+                if (error) return end(err);
                 WindowsWaitForStatus(instance, end);
               }
             );
