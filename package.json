@@ -37,5 +37,8 @@
     "url": "https://github.com/jorangreef/sudo-prompt/issues"
   },
   "homepage": "https://github.com/jorangreef/sudo-prompt#readme",
-  "scripts": {}
+  "scripts": {},
+  "dependencies": {
+    "iconv-lite": "^0.6.2"
+  }
 }
