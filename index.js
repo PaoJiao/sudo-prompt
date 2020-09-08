@@ -1,3 +1,5 @@
+const iconv = require('iconv-lite');
+
 var Node = {
   child: require('child_process'),
   crypto: require('crypto'),
@@ -476,7 +478,7 @@ function Windows(instance, callback) {
           function end(error, stdout, stderr) {
             Remove(instance.path,
               function(errorRemove) {
-                if (error) return callback(error);
+                if (error) return callback(error, stdout, stderr);
                 if (errorRemove) return callback(errorRemove);
                 callback(undefined, stdout, stderr);
               }
@@ -509,6 +511,47 @@ function Windows(instance, callback) {
   );
 }
 
+var codepage = null;
+function getCodepage() {
+  var _platform = process.platform;
+  var _linux = (_platform === 'linux');
+  var _darwin = (_platform === 'darwin');
+  var _windows = (_platform === 'win32');
+  var _freebsd = (_platform === 'freebsd');
+  var _openbsd = (_platform === 'openbsd');
+  var _netbsd = (_platform === 'netbsd');
+
+  if (_windows) {
+    if (!codepage) {
+      try {
+        var stdout = Node.child.execSync('chcp');
+        var lines = stdout.toString().split('\r\n');
+        var parts = lines[0].split(':');
+        codepage = parts.length > 1 ? parts[1].replace('.', '') : '';
+      } catch (err) {
+        codepage = '437';
+      }
+    }
+    return codepage;
+  }
+  if (_linux || _darwin || _freebsd || _openbsd || _netbsd) {
+    if (!codepage) {
+      try {
+        var stdout = Node.child.execSync('echo $LANG');
+        var lines = stdout.toString().split('\r\n');
+        var parts = lines[0].split('.');
+        codepage = parts.length > 1 ? parts[1].trim() : '';
+        if (!codepage) {
+          codepage = 'UTF-8';
+        }
+      } catch (err) {
+        codepage = 'UTF-8';
+      }
+    }
+    return codepage;
+  }
+}
+
 function WindowsElevate(instance, end) {
   // We used to use this for executing elevate.vbs:
   // var command = 'cscript.exe //NoLogo "' + instance.pathElevate + '"';
@@ -524,14 +567,26 @@ function WindowsElevate(instance, end) {
   command.push('-WindowStyle hidden');
   command.push('-Verb runAs');
   command = command.join(' ');
-  var child = Node.child.exec(command, { encoding: 'utf-8' },
+  var child = Node.child.exec(command, { encoding: 'buffer' },
     function(error, stdout, stderr) {
+      var codepage = getCodepage();
+      var decodedStdout;
+      var decodedStderr;
+
+      try {
+        decodedStdout = iconv.decode(stdout, codepage);
+        decodedStderr = iconv.decode(stderr, codepage);
+      } catch (e) {
+        decodedStdout = stdout.toString('utf8');
+        decodedStderr = stderr.toString('utf8');
+      }
+
       // We used to return PERMISSION_DENIED only for error messages containing
       // the string 'canceled by the user'. However, Windows internationalizes
       // error messages (issue 96) so now we must assume all errors here are
       // permission errors. This seems reasonable, given that we already run the
       // user's command in a subshell.
-      if (error) return end(new Error(PERMISSION_DENIED), stdout, stderr);
+      if (error) return end(new Error(PERMISSION_DENIED), decodedStdout, decodedStderr);
       end();
     }
   );
