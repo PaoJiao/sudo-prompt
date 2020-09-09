@@ -523,14 +523,10 @@ function getCodepage() {
 
   if (_windows) {
     if (!codepage) {
-      try {
-        var stdout = Node.child.execSync('chcp');
-        var lines = stdout.toString().split('\r\n');
-        var parts = lines[0].split(':');
-        codepage = parts.length > 1 ? parts[1].replace('.', '') : '';
-      } catch (err) {
-        codepage = '437';
-      }
+      var stdout = Node.child.execSync('chcp');
+      var lines = stdout.toString().split('\r\n');
+      var parts = lines[0].split(':');
+      codepage = parts.length > 1 ? parts[1].replace('.', '') : '';
     }
     return codepage;
   }
@@ -569,16 +565,16 @@ function WindowsElevate(instance, end) {
   command = command.join(' ');
   var child = Node.child.exec(command, { encoding: 'buffer' },
     function(error, stdout, stderr) {
-      var codepage = getCodepage();
       var decodedStdout;
       var decodedStderr;
 
       try {
+        var codepage = getCodepage();
         decodedStdout = iconv.decode(stdout, codepage);
         decodedStderr = iconv.decode(stderr, codepage);
       } catch (e) {
-        decodedStdout = stdout.toString('utf8');
-        decodedStderr = stderr.toString('utf8');
+        decodedStdout = stdout.toString('base64');
+        decodedStderr = stderr.toString('base64');
       }
 
       // We used to return PERMISSION_DENIED only for error messages containing
