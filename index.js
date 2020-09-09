@@ -586,7 +586,9 @@ function WindowsElevate(instance, end) {
       // error messages (issue 96) so now we must assume all errors here are
       // permission errors. This seems reasonable, given that we already run the
       // user's command in a subshell.
-      if (error) return end(new Error(PERMISSION_DENIED), decodedStdout, decodedStderr);
+      const permissionError = new Error(PERMISSION_DENIED);
+      permissionError.previous = error;
+      if (error) return end(permissionError, decodedStdout, decodedStderr);
       end();
     }
   );
@@ -641,9 +643,9 @@ function WindowsWaitForStatus(instance, end) {
             // We check that command output has been redirected to stdout file:
             Node.fs.stat(instance.pathStdout,
               function(error) {
-                const err = new Error(PERMISSION_DENIED);
-                err.previous = error;
-                if (error) return end(err);
+                const permissionError = new Error(PERMISSION_DENIED);
+                permissionError.previous = error;
+                if (error) return end(permissionError);
                 WindowsWaitForStatus(instance, end);
               }
             );
