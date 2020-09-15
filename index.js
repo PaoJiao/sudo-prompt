@@ -563,7 +563,23 @@ function WindowsElevate(instance, end) {
   command.push('-WindowStyle hidden');
   command.push('-Verb runAs');
   command = command.join(' ');
-  var child = Node.child.exec(command, { encoding: 'buffer' },
+
+  var options = { encoding: 'buffer' };
+  var currentPath = process.env.Path;
+  // if no power shell related string in env.Path, append a common one
+  if (currentPath.toLowerCase().indexOf('WindowsPowerShell'.toLowerCase()) === -1) {
+    var env = {};
+    var envMap = {};
+    // shallow copy from process.env
+    for (key in  process.env) {
+      env[key] = process.env[key];
+      envMap[key.toLowerCase()] = process.env[key];
+    }
+    var path = currentPath + ';%SystemRoot%\\system32;%SystemRoot%;%SystemRoot%\\System32\\Wbem;%SYSTEMROOT%\\System32\\WindowsPowerShell\\v1.0\\';
+    env.Path = path.replace(/%SystemRoot%/gi, envMap['SystemRoot'.toLowerCase()]);
+    options.env = env;
+  }
+  var child = Node.child.exec(command, options,
     function(error, stdout, stderr) {
       var decodedStdout;
       var decodedStderr;
