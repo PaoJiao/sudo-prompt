@@ -476,9 +476,10 @@ function Windows(instance, callback) {
         function(error) {
           if (error) return callback(error);
           function end(error, stdout, stderr) {
+            if (error) return callback(error, stdout, stderr);
+
             Remove(instance.path,
               function(errorRemove) {
-                if (error) return callback(error, stdout, stderr);
                 if (errorRemove) return callback(errorRemove);
                 callback(undefined, stdout, stderr);
               }
@@ -567,7 +568,7 @@ function WindowsElevate(instance, end) {
   var options = { encoding: 'buffer' };
   var currentPath = process.env.Path;
   // if no power shell related string in env.Path, append a common one
-  if (currentPath.toLowerCase().indexOf('WindowsPowerShell'.toLowerCase()) === -1) {
+  if (currentPath.toLowerCase().indexOf('PowerShell'.toLowerCase()) === -1) {
     var env = {};
     var envMap = {};
     // shallow copy from process.env
@@ -655,9 +656,11 @@ function WindowsWaitForStatus(instance, end) {
             // We check that command output has been redirected to stdout file:
             Node.fs.stat(instance.pathStdout,
               function(error) {
-                const permissionError = new Error(PERMISSION_DENIED);
-                permissionError.previous = error;
-                if (error) return end(permissionError);
+                if (error) {
+                  const permissionError = new Error(PERMISSION_DENIED);
+                  permissionError.previous = error;
+                  return end(permissionError);
+                }
                 WindowsWaitForStatus(instance, end);
               }
             );
@@ -721,6 +724,12 @@ function WindowsWriteExecuteScript(instance, end) {
   script.push('@echo off');
   // Set code page to UTF-8:
   script.push('chcp 65001>nul');
+
+  // prepare empty files for WindowsWaitForStatus, in case `execute.bat` execte gt 1 second
+  script.push('copy /y nul ' + instance.pathStatus);
+  script.push('copy /y nul ' + instance.pathStderr);
+  script.push('copy /y nul ' + instance.pathStdout);
+
   script.push(
     'call "' + instance.pathCommand + '"' +
     ' > "' + instance.pathStdout + '" 2> "' + instance.pathStderr + '"'
