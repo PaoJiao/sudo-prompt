@@ -720,15 +720,15 @@ function WindowsWriteElevateScript(instance, end) {
 }
 
 function WindowsWriteExecuteScript(instance, end) {
+  // prepare empty files for WindowsWaitForStatus, in case `WindowsElevate` execte gt 1 second
+  Node.fs.writeFileSync(instance.pathStatus, '', 'utf-8');
+  Node.fs.writeFileSync(instance.pathStderr, '', 'utf-8');
+  Node.fs.writeFileSync(instance.pathStdout, '', 'utf-8');
+
   var script = [];
   script.push('@echo off');
   // Set code page to UTF-8:
   script.push('chcp 65001>nul');
-
-  // prepare empty files for WindowsWaitForStatus, in case `execute.bat` execte gt 1 second
-  script.push('copy /y nul ' + instance.pathStatus);
-  script.push('copy /y nul ' + instance.pathStderr);
-  script.push('copy /y nul ' + instance.pathStdout);
 
   script.push(
     'call "' + instance.pathCommand + '"' +
